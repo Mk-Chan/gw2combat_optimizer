@@ -1,0 +1,34 @@
+{
+    "actors": [
+        {
+            "name": "lb-slb",
+            "build_path": "resources/build-lb-slb.json",
+            "team": 1
+        }, {
+            "name": "golem",
+            "build_path": "resources/build-golem.json",
+            "team": 2
+        }
+    ],
+    "termination_conditions": [
+        {
+            "type": "DAMAGE",
+            "actor": "golem",
+            "damage": 4000000
+        }
+    ],
+    "audit_configuration": {
+        "audits_to_perform": [
+            "ACTOR_CREATED",
+            "SKILL_CASTS",
+            "BUNDLES",
+            "EFFECT_APPLICATIONS",
+            "DAMAGE",
+            "COMBAT_STATS",
+            "EFFECT_EXPIRATION",
+            "ACTOR_DOWNSTATE"
+        ]
+    },
+    "require_afk_skills": false,
+    "audit_offset": 0
+}
