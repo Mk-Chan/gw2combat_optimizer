@@ -42,7 +42,7 @@ class ActorState(object):
 
     def simulate(self, next_skill: Optional[str]) -> (int, Optional[str]):
         """
-
+        TODO: Explain how to use the return values
         :param next_skill:
         :return: time_delta, executed_skill
         """

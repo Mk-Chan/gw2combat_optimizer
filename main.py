@@ -212,6 +212,7 @@ def loop():
                     elif "rotation" not in actor:
                         # Set a default empty rotation just for consistency
                         actor["rotation"] = {"skill_casts": []}
+                # TODO: When the encounter has a rotation, simulate it with a new actor_state.
             elif words[1] == "rotation":
                 if len(words) < 3:
                     print("Usage: set rotation <optional:actor> \"<skill>\" \"<skill>\" ...")
@@ -237,6 +238,7 @@ def loop():
                         continue
                     rotation["skill_casts"].append({"skill": skill, "cast_time_ms": 0})
                 actor["rotation"] = rotation
+                # TODO: When a rotation is explicitly set, update the actor_state with the updated encounter.
             elif words[1] == "time":
                 if len(words) != 3:
                     print("Usage: set time <time>")
