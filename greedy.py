@@ -1,41 +1,37 @@
-from typing import List
+from typing import List, Optional, Dict, Tuple
 
-from skill_state import SkillStates
+from actor_state import ActorState
+from skill_state import SkillState
 from weapon_type import WeaponType
 
 
-def search_greedy(skill_states: SkillStates, max_time) -> (int, List[str]):
+def search_greedy(actor_state: ActorState, max_time: Optional[int], depth: Optional[int] = None) \
+        -> (int, Dict[str, List[Tuple[str, int]]]):
     sorted_skills = sorted(
-        skill_states.skill_states.values(),
+        actor_state.skill_states.values(),
         key=lambda skill: skill.score_per_cast_time,
         reverse=True)
 
     total_damage = 0
 
-    current_weapon_type = WeaponType.LONGBOW
-    best_skill_sequence = []
-    time = 0
-    while time < max_time:
-        castable_skills = []
+    best_rotation = []
+    time = 1
+    while time <= max_time:
+        if depth is not None and len(best_rotation) >= depth:
+            break
+        next_skill: Optional[SkillState] = None
         for skill in sorted_skills:
-            if skill.can_cast(current_weapon_type):
-                castable_skills.append(skill)
+            if actor_state.can_cast(skill.skill_key):
+                next_skill = skill
+                break
 
-        if not castable_skills:
-            time += 1
-            for skill in sorted_skills:
-                skill.tick_cooldown()
-            continue
+        time_delta, executed_skill = actor_state.simulate(next_skill.skill_key)
+        if time_delta == 0:
+            raise Exception(f"Error: skill {next_skill.skill_key} cannot be cast")
 
-        best_skill = castable_skills[0]
-        best_skill.cast()
-        if best_skill.skill_key == "Weapon Swap":
-            current_weapon_type = WeaponType.LONGBOW if current_weapon_type == WeaponType.AXE else WeaponType.AXE
+        time += time_delta
+        if executed_skill == next_skill.skill_key:
+            total_damage += next_skill.skill_simulation_data.total_damage
+            best_rotation.append({"skill": next_skill.skill_key, "cast_time_ms": time})
 
-        total_damage += best_skill.skill_simulation_data.total_damage
-        best_skill_sequence.append(best_skill.skill_key)
-        time += best_skill.cast_duration
-        for skill in sorted_skills:
-            skill.tick_cooldown(best_skill.cast_duration)
-
-    return total_damage, best_skill_sequence
+    return total_damage, {"skill_casts": best_rotation}
