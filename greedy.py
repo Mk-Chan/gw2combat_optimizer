@@ -28,10 +28,10 @@ def search_greedy(actor_state: ActorState, max_time: Optional[int], depth: Optio
         time_delta, executed_skill = actor_state.simulate(next_skill.skill_key)
         if time_delta == 0:
             raise Exception(f"Error: skill {next_skill.skill_key} cannot be cast")
-
-        time += time_delta
         if executed_skill == next_skill.skill_key:
             total_damage += next_skill.skill_simulation_data.total_damage
             best_rotation.append({"skill": next_skill.skill_key, "cast_time_ms": time})
+
+        time += time_delta
 
     return total_damage, {"skill_casts": best_rotation}

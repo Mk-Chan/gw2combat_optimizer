@@ -141,7 +141,7 @@ def get_actor_state_from_encounter(encounter: Dict) -> ActorState:
         score = get_skill_score(skill, skill_simulation_data)
         damage = skill_simulation_data.total_damage
 
-        print(f"Info: static score: \"{skill['skill_key']}\": {damage}")
+        # print(f"Info: static score: \"{skill['skill_key']}\": {damage}")
         skill_states[skill["skill_key"]] = SkillState(
             skill["skill_key"],
             WeaponType(skill.get("weapon_type", "invalid")),
@@ -162,9 +162,10 @@ def get_actor_state_from_encounter(encounter: Dict) -> ActorState:
 
 
 def loop():
-    print("Info: available commands - ugi/isready/set/display/simulate/search/exit")
+    print("Info: available commands - set/display/simulate/search/exit")
 
     # Setup a default encounter
+    current_actor_state: Optional[ActorState] = None
     encounter: Dict = json.load(open("resources/encounter.json", "r"))
     for actor in encounter["actors"]:
         if "build" not in actor and "build_path" in actor:
@@ -174,6 +175,14 @@ def loop():
             encounter = None
             break
 
+        if "rotation" not in actor and "rotation_path" in actor:
+            actor["rotation"] = json.load(open(actor["rotation_path"]))
+        elif "rotation" not in actor:
+            # Set a default empty rotation just for consistency
+            actor["rotation"] = {"skill_casts": []}
+    current_actor_state = get_actor_state_from_encounter(encounter)
+    current_actor_state.simulate_rotation(encounter["actors"][0]["rotation"])
+
     latest_audit: Optional[Dict] = None
     search_time: int = 30000  # Default search time is 10 seconds worth of simulation time
     search_depth: Optional[int] = None
@@ -182,12 +191,6 @@ def loop():
         words = line.split(" ")
         if words[0] in ("exit", "quit", "q"):
             break
-        elif words[0] == "ugi":
-            print("id name gw2combat_optimizer")
-            print("id author mkchan")
-            print("ugiok")
-        elif words[0] == "isready":
-            print("readyok")
         elif words[0] == "set":
             if len(words) < 2:
                 print("Usage: set <encounter/rotation/time/depth> <value(s)>")
@@ -212,7 +215,8 @@ def loop():
                     elif "rotation" not in actor:
                         # Set a default empty rotation just for consistency
                         actor["rotation"] = {"skill_casts": []}
-                # TODO: When the encounter has a rotation, simulate it with a new actor_state.
+                current_actor_state = get_actor_state_from_encounter(encounter)
+                current_actor_state.simulate_rotation(encounter["actors"][0]["rotation"])
             elif words[1] == "rotation":
                 if len(words) < 3:
                     print("Usage: set rotation <optional:actor> \"<skill>\" \"<skill>\" ...")
@@ -238,7 +242,8 @@ def loop():
                         continue
                     rotation["skill_casts"].append({"skill": skill, "cast_time_ms": 0})
                 actor["rotation"] = rotation
-                # TODO: When a rotation is explicitly set, update the actor_state with the updated encounter.
+                current_actor_state = get_actor_state_from_encounter(encounter)
+                current_actor_state.simulate_rotation(encounter["actors"][0]["rotation"])
             elif words[1] == "time":
                 if len(words) != 3:
                     print("Usage: set time <time>")
@@ -271,7 +276,14 @@ def loop():
                 print(json.dumps(encounter))
             elif words[1] == "rotation":
                 print("Info: selecting first actor by default")
-                print(json.dumps(encounter["actors"][0]["rotation"]))
+                actor = encounter["actors"][0]
+                print(f"Info: rotation: {json.dumps(actor['rotation'])}")
+                simple_rotation = " ".join([
+                    f"\"{skill_cast['skill']}\""
+                    for skill_cast
+                    in actor['rotation']['skill_casts']
+                ])
+                print(f"Info: simple rotation: {simple_rotation}")
             elif words[1] == "actor":
                 if len(words) < 3:
                     print("Usage: display actor <actor> <optional:rotation>")
@@ -288,6 +300,13 @@ def loop():
                 if len(words) == 4:
                     if words[3] == "rotation":
                         print(json.dumps(actor["rotation"]))
+                        print(f"Info: rotation: {json.dumps(actor['rotation'])}")
+                        simple_rotation = " ".join([
+                            f"\"{skill_cast['skill']}\""
+                            for skill_cast
+                            in actor['rotation']['skill_casts']
+                        ])
+                        print(f"Info: simple rotation: {simple_rotation}")
                     else:
                         print("Usage: display actor <actor> <optional:rotation>")
                 else:
@@ -325,9 +344,12 @@ def loop():
             if len(words) != 2:
                 print("Usage: search <greedy>")
                 continue
-            actor_state = get_actor_state_from_encounter(encounter)
+            if current_actor_state is None:
+                copy_actor_state = get_actor_state_from_encounter(encounter)
+            else:
+                copy_actor_state = copy.deepcopy(current_actor_state)
             if words[1] == "greedy":
-                total_damage, best_skill_sequence = search_greedy(actor_state, search_time, search_depth)
+                total_damage, best_skill_sequence = search_greedy(copy_actor_state, search_time, search_depth)
                 print("Info: greedy search")
                 print(f"Info: total damage: {total_damage}")
                 print(f"Info: rotation: {json.dumps(best_skill_sequence)}")
@@ -338,7 +360,7 @@ def loop():
                 ])
                 print(f"Info: simple rotation: {simple_rotation}")
         else:
-            print("Usage: ugi/isready/set/display/simulate/search/exit")
+            print("Usage: set/display/simulate/search/exit")
 
 
 def main():

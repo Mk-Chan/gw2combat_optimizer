@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Dict, Set, Optional
+from typing import Dict, Set, Optional, List, Union
 
 from skill_state import SkillState
 from weapon_type import WeaponType
@@ -58,3 +58,20 @@ class ActorState(object):
         time_delta = max(1, self.skill_states[next_skill].cast_duration)
         self.tick_cooldown(time_delta)
         return time_delta, next_skill
+
+    def simulate_rotation(self, rotation: Dict[str, List[Dict[str, Union[str, int]]]]):
+        time = 1
+        for skill_cast in rotation["skill_casts"]:
+            next_skill: str = str(skill_cast["skill"])
+            if not next_skill:
+                continue
+
+            if not self.can_cast(next_skill):
+                time += 1
+                continue
+
+            self.cast(next_skill)
+
+            time_delta = max(1, self.skill_states[next_skill].cast_duration)
+            self.tick_cooldown(time_delta)
+            time += time_delta
